@@ -32,24 +32,22 @@ pub struct Client {
     write_endpoint_url: Url,
 }
 
-fn make_authenticated_client_builder(auth_token: &str) -> Result<reqwest::ClientBuilder> {
-    let mut auth_value = reqwest::header::HeaderValue::from_str(auth_token)?;
-    auth_value.set_sensitive(true);
-    let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert(reqwest::header::AUTHORIZATION, auth_value);
-    let reqwest_client_builder = reqwest::Client::builder().default_headers(headers);
-    Ok(reqwest_client_builder)
-}
-
 fn make_write_endpoint_url(url: &str) -> Result<Url> {
     Ok(Url::parse(&url)?.join("/api/v2/write")?)
 }
 
 impl Client {
     pub fn new(url: &str, auth_token: &str) -> Result<Self> {
-        let client_builder = make_authenticated_client_builder(auth_token)?;
+        let mut auth_value =
+            reqwest::header::HeaderValue::from_str(&format!("Token {}", auth_token))?;
+        auth_value.set_sensitive(true);
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(reqwest::header::AUTHORIZATION, auth_value);
+        let authenticated_client = reqwest::Client::builder()
+            .default_headers(headers)
+            .build()?;
         let result = Self {
-            authenticated_client: Arc::new(client_builder.build()?),
+            authenticated_client: Arc::new(authenticated_client),
             write_endpoint_url: make_write_endpoint_url(url)?,
         };
         Ok(result)
@@ -227,18 +225,19 @@ impl Bucket {
         // https://docs.influxdata.com/influxdb/v2.0/reference/syntax/line-protocol/
         let lines: Vec<String> = measurement.iter().map(|m| m.to_string()).collect();
         let body = lines.join("\n");
+        let req = self
+            .authenticated_client
+            .post(self.write_endpoint_url.clone())
+            .body(body.clone())
+            .timeout(timeout)
+            .build()?;
+        tracing::debug!("Sending request: {:?}", request = req);
         tracing::debug!(
             "Sending measurements {url}: {body}",
             url = self.write_endpoint_url,
             body = body,
         );
-        let resp = self
-            .authenticated_client
-            .post(self.write_endpoint_url.clone())
-            .body(body)
-            .timeout(timeout)
-            .send()
-            .await?;
+        let resp = self.authenticated_client.execute(req).await?;
         resp.error_for_status().map_err(Into::into)
     }
 }
