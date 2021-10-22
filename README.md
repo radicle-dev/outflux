@@ -6,3 +6,7 @@ InfluxDB in any way.
 # Status
 
 Tested and works.
+
+# Usage
+
+See [example](examples/main.rs).
