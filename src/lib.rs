@@ -27,6 +27,7 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Clone)]
 pub struct Client {
     authenticated_client: Arc<reqwest::Client>,
     write_endpoint_url: Url,
