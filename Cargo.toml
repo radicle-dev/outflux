@@ -3,6 +3,12 @@ name = "outflux"
 version = "0.1.0"
 edition = "2018"
 authors = ["Adam Szkoda <adaszko@gmail.com>"]
+license-file = "LICENSE"
+description = "InfluxDB 2.0 client library that supports writes only"
+homepage = "https://github.com/radicle-dev/outflux"
+repository = "https://github.com/radicle-dev/outflux"
+readme = "README.md"
+keywords = ["influxdb", "metrics", "observability"]
 
 [dependencies]
 reqwest = "0.11"
